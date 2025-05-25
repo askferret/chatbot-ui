@@ -11,10 +11,10 @@ export type LLMID =
 // OpenAI Models (UPDATED 5/13/24)
 export type OpenAILLMID =
   | "gpt-4o" // GPT-4o
-  | "gpt-4-turbo-preview" // GPT-4 Turbo
-  | "gpt-4-vision-preview" // GPT-4 Vision
-  | "gpt-4" // GPT-4
-  | "gpt-3.5-turbo" // Updated GPT-3.5 Turbo
+  | "gpt-4.1" // GPT-4.1
+  | "gpt-4.1-mini" // GPT-4.1 Mini
+  | "gpt-4.1-nano" // GPT-4.1 Nano
+  | "o3-mini" // O3 Mini
 
 // Google Models
 export type GoogleLLMID =
@@ -25,12 +25,9 @@ export type GoogleLLMID =
 
 // Anthropic Models
 export type AnthropicLLMID =
-  | "claude-2.1" // Claude 2
-  | "claude-instant-1.2" // Claude Instant
-  | "claude-3-haiku-20240307" // Claude 3 Haiku
-  | "claude-3-sonnet-20240229" // Claude 3 Sonnet
-  | "claude-3-opus-20240229" // Claude 3 Opus
-  | "claude-3-5-sonnet-20240620" // Claude 3.5 Sonnet
+  | "claude-3-5-haiku" // Claude 3.5 Haiku
+  | "claude-4-sonnet" // Claude 4 Sonnet
+  | "claude-3-7-sonnet" // Claude 3.7 Sonnet
 
 // Mistral Models
 export type MistralLLMID =

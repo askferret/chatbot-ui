@@ -29,9 +29,11 @@ export async function POST(request: Request) {
       messages: messages as ChatCompletionCreateParamsBase["messages"],
       temperature: chatSettings.temperature,
       max_tokens:
-        chatSettings.model === "gpt-4-vision-preview" ||
-        chatSettings.model === "gpt-4o"
-          ? 4096
+        chatSettings.model === "o3-mini" ||
+        chatSettings.model === "gpt-4.1" ||
+        chatSettings.model === "gpt-4.1-mini" ||
+        chatSettings.model === "gpt-4.1-nano"
+          ? 32768
           : null, // TODO: Fix
       stream: true
     })
