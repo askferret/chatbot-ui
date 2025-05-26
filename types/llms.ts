@@ -9,54 +9,21 @@ export type LLMID =
   | PerplexityLLMID
 
 // OpenAI Models (UPDATED 5/13/24)
-export type OpenAILLMID =
-  | "gpt-4o" // GPT-4o
-  | "gpt-4.1" // GPT-4.1
-  | "gpt-4.1-mini" // GPT-4.1 Mini
-  | "gpt-4.1-nano" // GPT-4.1 Nano
-  | "o3-mini" // O3 Mini
+export type OpenAILLMID = string
 
 // Google Models
-export type GoogleLLMID =
-  | "gemini-pro" // Gemini Pro
-  | "gemini-pro-vision" // Gemini Pro Vision
-  | "gemini-1.5-pro-latest" // Gemini 1.5 Pro
-  | "gemini-1.5-flash" // Gemini 1.5 Flash
+export type GoogleLLMID = string
 
 // Anthropic Models
-export type AnthropicLLMID =
-  | "claude-3-5-haiku" // Claude 3.5 Haiku
-  | "claude-4-sonnet" // Claude 4 Sonnet
-  | "claude-3-7-sonnet" // Claude 3.7 Sonnet
+export type AnthropicLLMID = string
 
 // Mistral Models
-export type MistralLLMID =
-  | "mistral-tiny" // Mistral Tiny
-  | "mistral-small-latest" // Mistral Small
-  | "mistral-medium-latest" // Mistral Medium
-  | "mistral-large-latest" // Mistral Large
+export type MistralLLMID = string
 
-export type GroqLLMID =
-  | "llama3-8b-8192" // LLaMA3-8b
-  | "llama3-70b-8192" // LLaMA3-70b
-  | "mixtral-8x7b-32768" // Mixtral-8x7b
-  | "gemma-7b-it" // Gemma-7b IT
+export type GroqLLMID = string
 
 // Perplexity Models (UPDATED 1/31/24)
-export type PerplexityLLMID =
-  | "pplx-7b-online" // Perplexity Online 7B
-  | "pplx-70b-online" // Perplexity Online 70B
-  | "pplx-7b-chat" // Perplexity Chat 7B
-  | "pplx-70b-chat" // Perplexity Chat 70B
-  | "mixtral-8x7b-instruct" // Mixtral 8x7B Instruct
-  | "mistral-7b-instruct" // Mistral 7B Instruct
-  | "llama-2-70b-chat" // Llama2 70B Chat
-  | "codellama-34b-instruct" // CodeLlama 34B Instruct
-  | "codellama-70b-instruct" // CodeLlama 70B Instruct
-  | "sonar-small-chat" // Sonar Small Chat
-  | "sonar-small-online" // Sonar Small Online
-  | "sonar-medium-chat" // Sonar Medium Chat
-  | "sonar-medium-online" // Sonar Medium Online
+export type PerplexityLLMID = string
 
 export interface LLM {
   modelId: LLMID
