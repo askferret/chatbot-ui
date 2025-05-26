@@ -6,6 +6,12 @@ import { OpenAIStream, StreamingTextResponse } from "ai"
 import OpenAI from "openai"
 import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completions.mjs"
 
+/**
+ * Handles chat tool calls, including OpenAPI-based tools and local tools (e.g., Interactive Canvas).
+ * Streams tool messages as separate events/chunks to the frontend, followed by the assistant message.
+ * @param {Request} request - The incoming request object.
+ * @returns {Promise<Response>} The response streaming tool and assistant messages.
+ */
 export async function POST(request: Request) {
   const json = await request.json()
   const { chatSettings, messages, selectedTools } = json as {
@@ -69,16 +75,22 @@ export async function POST(request: Request) {
     messages.push(message)
     const toolCalls = message.tool_calls || []
 
-    if (toolCalls.length === 0) {
-      return new Response(message.content, {
-        headers: {
-          "Content-Type": "application/json"
-        }
-      })
-    }
+    console.log(
+      "[TOOL DEBUG] Incoming tool calls:",
+      JSON.stringify(toolCalls, null, 2)
+    )
+
+    // Collect tool messages to stream
+    const toolMessages: Array<{
+      tool_call_id: string
+      role: string
+      name: string
+      content: string
+    }> = []
 
     if (toolCalls.length > 0) {
       for (const toolCall of toolCalls) {
+        console.log("[TOOL DEBUG] Processing toolCall:", toolCall)
         const functionCall = toolCall.function
         const functionName = functionCall.name
         const argumentsString = toolCall.function.arguments.trim()
@@ -91,6 +103,45 @@ export async function POST(request: Request) {
 
         if (!schemaDetail) {
           throw new Error(`Function ${functionName} not found in any schema`)
+        }
+
+        console.log("[TOOL DEBUG] schemaDetail:", schemaDetail)
+        console.log("[TOOL DEBUG] parsedArgs:", parsedArgs)
+
+        // Handle local tools (e.g., Interactive Canvas)
+        if (schemaDetail.url === "local") {
+          console.log(
+            "[TOOL DEBUG] Detected local tool (Interactive Canvas). Args:",
+            parsedArgs
+          )
+          // For local tools, return the htmlSource or equivalent directly
+          let data = {}
+          if (parsedArgs.htmlSource) {
+            data = {
+              html: parsedArgs.htmlSource,
+              canvasHeight: parsedArgs.canvasHeight
+            }
+          } else if (
+            parsedArgs.requestBody &&
+            parsedArgs.requestBody.htmlSource
+          ) {
+            data = {
+              html: parsedArgs.requestBody.htmlSource,
+              canvasHeight: parsedArgs.requestBody.canvasHeight
+            }
+          } else {
+            data = { error: "Missing htmlSource for local tool." }
+          }
+          const toolMsg = {
+            tool_call_id: toolCall.id,
+            role: "tool",
+            name: functionName,
+            content: JSON.stringify(data)
+          }
+          toolMessages.push(toolMsg)
+          messages.push(toolMsg)
+          console.log("[TOOL DEBUG] Returning data for local tool:", data)
+          continue // Skip the rest of the loop for local tools
         }
 
         const pathTemplate = Object.keys(schemaDetail.routeMap).find(
@@ -189,24 +240,50 @@ export async function POST(request: Request) {
           }
         }
 
-        messages.push({
+        const toolMsg = {
           tool_call_id: toolCall.id,
           role: "tool",
           name: functionName,
           content: JSON.stringify(data)
-        })
+        }
+        toolMessages.push(toolMsg)
+        messages.push(toolMsg)
       }
     }
 
-    const secondResponse = await openai.chat.completions.create({
-      model: chatSettings.model as ChatCompletionCreateParamsBase["model"],
-      messages,
-      stream: true
+    // Create a ReadableStream to stream tool messages and then the assistant message
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        // 1. Stream each tool message as a JSON string
+        for (const toolMsg of toolMessages) {
+          controller.enqueue(
+            new TextEncoder().encode(JSON.stringify(toolMsg) + "\n")
+          )
+        }
+
+        // 2. Generate the assistant message as before
+        const secondResponse = await openai.chat.completions.create({
+          model: chatSettings.model as ChatCompletionCreateParamsBase["model"],
+          messages,
+          stream: true
+        })
+
+        // 3. Stream the assistant message chunks from OpenAIStream (which is async iterable)
+        const openAIStream = OpenAIStream(secondResponse)
+        for await (const chunk of openAIStream) {
+          controller.enqueue(chunk as Uint8Array)
+        }
+
+        controller.close()
+      }
     })
 
-    const stream = OpenAIStream(secondResponse)
-
-    return new StreamingTextResponse(stream)
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Transfer-Encoding": "chunked"
+      }
+    })
   } catch (error: any) {
     console.error(error)
     const errorMessage = error.error?.message || "An unexpected error occurred"

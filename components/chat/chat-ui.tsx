@@ -18,6 +18,8 @@ import { ChatInput } from "./chat-input"
 import { ChatMessages } from "./chat-messages"
 import { ChatScrollButtons } from "./chat-scroll-buttons"
 import { ChatSecondaryButtons } from "./chat-secondary-buttons"
+import { InteractiveCanvas } from "@/components/artifacts/InteractiveCanvas"
+import { IconBolt } from "@tabler/icons-react"
 
 interface ChatUIProps {}
 
@@ -38,7 +40,11 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     setChatFiles,
     setShowFilesDisplay,
     setUseRetrieval,
-    setSelectedTools
+    setSelectedTools,
+    canvasArtifact,
+    setCanvasArtifact,
+    chatMessages,
+    lastCanvasToolMessage
   } = useContext(ChatbotUIContext)
 
   const { handleNewChat, handleFocusChatInput } = useChatHandler()
@@ -181,50 +187,97 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     })
   }
 
+  // Helper: Open the most recent tool message with html from context
+  const openMostRecentCanvas = () => {
+    if (lastCanvasToolMessage) {
+      setCanvasArtifact(lastCanvasToolMessage)
+      console.log(
+        "[CANVAS DEBUG] Opened Interactive Canvas from last tool message:",
+        lastCanvasToolMessage
+      )
+    } else {
+      console.log("[CANVAS DEBUG] No tool message with html found.")
+    }
+  }
+
   if (loading) {
     return <Loading />
   }
 
   return (
-    <div className="relative flex h-full flex-col items-center">
-      <div className="absolute left-4 top-2.5 flex justify-center">
-        <ChatScrollButtons
-          isAtTop={isAtTop}
-          isAtBottom={isAtBottom}
-          isOverflowing={isOverflowing}
-          scrollToTop={scrollToTop}
-          scrollToBottom={scrollToBottom}
-        />
-      </div>
+    <div className="relative flex size-full">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="absolute left-4 top-2.5 z-20 flex justify-center">
+          <ChatScrollButtons
+            isAtTop={isAtTop}
+            isAtBottom={isAtBottom}
+            isOverflowing={isOverflowing}
+            scrollToTop={scrollToTop}
+            scrollToBottom={scrollToBottom}
+          />
+        </div>
 
-      <div className="absolute right-4 top-1 flex h-[40px] items-center space-x-2">
-        <ChatSecondaryButtons />
-      </div>
+        <div className="absolute right-4 top-1 z-20 flex h-[40px] items-center space-x-2">
+          <ChatSecondaryButtons />
+          <button
+            className="flex items-center rounded bg-purple-600 px-2 py-1 text-xs text-white hover:bg-purple-700"
+            title="Open Interactive Canvas"
+            onClick={openMostRecentCanvas}
+          >
+            <IconBolt size={16} className="mr-1" />
+            Interactive Canvas
+          </button>
+        </div>
 
-      <div className="bg-secondary flex max-h-[50px] min-h-[50px] w-full items-center justify-center border-b-2 font-bold">
-        <div className="max-w-[200px] truncate sm:max-w-[400px] md:max-w-[500px] lg:max-w-[600px] xl:max-w-[700px]">
-          {selectedChat?.name || "Chat"}
+        <div className="bg-secondary flex max-h-[50px] min-h-[50px] w-full items-center justify-center border-b-2 font-bold">
+          <div className="max-w-[200px] truncate sm:max-w-[400px] md:max-w-[500px] lg:max-w-[600px] xl:max-w-[700px]">
+            {selectedChat?.name || "Chat"}
+          </div>
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col items-center overflow-y-auto pb-32 pt-4">
+          <div ref={messagesStartRef} />
+
+          <ChatMessages />
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="relative w-full min-w-[300px] items-end px-2 pb-3 pt-0 sm:w-[600px] sm:pb-8 sm:pt-5 md:w-[700px] lg:w-[700px] xl:w-[800px]">
+          <ChatInput />
+        </div>
+
+        <div className="absolute bottom-2 right-2 hidden md:block lg:bottom-4 lg:right-4">
+          <ChatHelp />
         </div>
       </div>
 
-      <div
-        className="flex size-full flex-col overflow-auto border-b"
-        onScroll={handleScroll}
-      >
-        <div ref={messagesStartRef} />
-
-        <ChatMessages />
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div className="relative w-full min-w-[300px] items-end px-2 pb-3 pt-0 sm:w-[600px] sm:pb-8 sm:pt-5 md:w-[700px] lg:w-[700px] xl:w-[800px]">
-        <ChatInput />
-      </div>
-
-      <div className="absolute bottom-2 right-2 hidden md:block lg:bottom-4 lg:right-4">
-        <ChatHelp />
-      </div>
+      {canvasArtifact && (
+        <aside
+          className="bg-background border-l"
+          style={{
+            minWidth: 320,
+            maxWidth: 600,
+            width: "min(600px,40vw)",
+            boxShadow: "0 0 8px #0001",
+            zIndex: 30
+          }}
+        >
+          <div className="mb-2 flex items-center justify-between p-4">
+            <span className="font-bold">Interactive Canvas</span>
+            <button
+              className="rounded bg-gray-200 px-2 py-1 text-xs hover:bg-gray-300"
+              onClick={() => setCanvasArtifact(null)}
+            >
+              Close
+            </button>
+          </div>
+          <InteractiveCanvas
+            htmlSource={canvasArtifact.html}
+            canvasHeight={canvasArtifact.canvasHeight}
+          />
+        </aside>
+      )}
     </div>
   )
 }

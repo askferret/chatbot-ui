@@ -136,6 +136,34 @@ interface ChatbotUIContext {
   setSelectedTools: Dispatch<SetStateAction<Tables<"tools">[]>>
   toolInUse: string
   setToolInUse: Dispatch<SetStateAction<string>>
+
+  // INTERACTIVE CANVAS ARTIFACT
+  canvasArtifact: {
+    html: string
+    canvasHeight?: number
+    toolCallId?: string
+  } | null
+  setCanvasArtifact: Dispatch<
+    SetStateAction<{
+      html: string
+      canvasHeight?: number
+      toolCallId?: string
+    } | null>
+  >
+
+  // LAST TOOL MESSAGE WITH HTML FOR CANVAS
+  lastCanvasToolMessage: {
+    html: string
+    canvasHeight?: number
+    toolCallId?: string
+  } | null
+  setLastCanvasToolMessage: Dispatch<
+    SetStateAction<{
+      html: string
+      canvasHeight?: number
+      toolCallId?: string
+    } | null>
+  >
 }
 
 export const ChatbotUIContext = createContext<ChatbotUIContext>({
@@ -261,5 +289,13 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   selectedTools: [],
   setSelectedTools: () => {},
   toolInUse: "none",
-  setToolInUse: () => {}
+  setToolInUse: () => {},
+
+  // INTERACTIVE CANVAS ARTIFACT
+  canvasArtifact: null,
+  setCanvasArtifact: () => {},
+
+  // LAST TOOL MESSAGE WITH HTML FOR CANVAS
+  lastCanvasToolMessage: null,
+  setLastCanvasToolMessage: () => {}
 })

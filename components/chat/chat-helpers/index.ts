@@ -281,6 +281,18 @@ export const fetchChatResponse = async (
   return response
 }
 
+/**
+ * Processes the streaming response from the backend, updating chat messages.
+ * Now robustly detects and inserts tool messages (role: 'tool') into chat history.
+ * @param response - The fetch response object
+ * @param lastChatMessage - The last chat message (assistant)
+ * @param isHosted - Whether the model is hosted
+ * @param controller - AbortController for the stream
+ * @param setFirstTokenReceived - State setter for first token
+ * @param setChatMessages - State setter for chat messages
+ * @param setToolInUse - State setter for tool in use
+ * @returns The full assistant message text
+ */
 export const processResponse = async (
   response: Response,
   lastChatMessage: ChatMessage,
@@ -301,13 +313,33 @@ export const processResponse = async (
         setToolInUse("none")
 
         try {
+          // Try to parse as JSON for tool messages
+          let parsed: any = null
+          try {
+            parsed = JSON.parse(chunk)
+          } catch {
+            parsed = null
+          }
+
+          if (parsed && typeof parsed === "object" && parsed.role === "tool") {
+            // Insert tool message into chat history
+            setChatMessages(prev => [
+              ...prev,
+              {
+                message: {
+                  ...parsed
+                  // Add any additional fields or normalization as needed
+                },
+                fileItems: []
+              }
+            ])
+            return // Don't update assistant message for this chunk
+          }
+
+          // Fallback: original logic for assistant message
           contentToAdd = isHosted
             ? chunk
-            : // Ollama's streaming endpoint returns new-line separated JSON
-              // objects. A chunk may have more than one of these objects, so we
-              // need to split the chunk by new-lines and handle each one
-              // separately.
-              chunk
+            : chunk
                 .trimEnd()
                 .split("\n")
                 .reduce(
@@ -315,27 +347,25 @@ export const processResponse = async (
                   ""
                 )
           fullText += contentToAdd
-        } catch (error) {
-          console.error("Error parsing JSON:", error)
-        }
 
-        setChatMessages(prev =>
-          prev.map(chatMessage => {
-            if (chatMessage.message.id === lastChatMessage.message.id) {
-              const updatedChatMessage: ChatMessage = {
-                message: {
-                  ...chatMessage.message,
-                  content: fullText
-                },
-                fileItems: chatMessage.fileItems
+          setChatMessages(prev =>
+            prev.map(chatMessage => {
+              if (chatMessage.message.id === lastChatMessage.message.id) {
+                const updatedChatMessage: ChatMessage = {
+                  message: {
+                    ...chatMessage.message,
+                    content: fullText
+                  },
+                  fileItems: chatMessage.fileItems
+                }
+                return updatedChatMessage
               }
-
-              return updatedChatMessage
-            }
-
-            return chatMessage
-          })
-        )
+              return chatMessage
+            })
+          )
+        } catch (error) {
+          console.error("Error parsing JSON or updating chat messages:", error)
+        }
       },
       controller.signal
     )

@@ -296,19 +296,21 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        {profile.image_url ? (
-          <Image
-            className="mt-2 size-[34px] cursor-pointer rounded hover:opacity-50"
-            src={profile.image_url + "?" + new Date().getTime()}
-            height={34}
-            width={34}
-            alt={"Image"}
-          />
-        ) : (
-          <Button size="icon" variant="ghost">
-            <IconUser size={SIDEBAR_ICON_SIZE} />
-          </Button>
-        )}
+        <span>
+          {profile.image_url ? (
+            <Image
+              className="mt-2 size-[34px] cursor-pointer rounded hover:opacity-50"
+              src={profile.image_url + "?" + new Date().getTime()}
+              height={34}
+              width={34}
+              alt={"Image"}
+            />
+          ) : (
+            <Button size="icon" variant="ghost">
+              <IconUser size={SIDEBAR_ICON_SIZE} />
+            </Button>
+          )}
+        </span>
       </SheetTrigger>
 
       <SheetContent

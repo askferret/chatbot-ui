@@ -77,10 +77,10 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [userInput, setUserInput] = useState<string>("")
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatSettings, setChatSettings] = useState<ChatSettings>({
-    model: "gpt-4-turbo-preview",
+    model: "gpt-4.1-mini",
     prompt: "You are a helpful AI assistant.",
-    temperature: 0.5,
-    contextLength: 4000,
+    temperature: 0.7,
+    contextLength: 8192,
     includeProfileContext: true,
     includeWorkspaceInstructions: true,
     embeddingsProvider: "openai"
@@ -122,6 +122,20 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   // TOOL STORE
   const [selectedTools, setSelectedTools] = useState<Tables<"tools">[]>([])
   const [toolInUse, setToolInUse] = useState<string>("none")
+
+  // INTERACTIVE CANVAS ARTIFACT
+  const [canvasArtifact, setCanvasArtifact] = useState<{
+    html: string
+    canvasHeight?: number
+    toolCallId?: string
+  } | null>(null)
+
+  // LAST TOOL MESSAGE WITH HTML FOR CANVAS
+  const [lastCanvasToolMessage, setLastCanvasToolMessage] = useState<{
+    html: string
+    canvasHeight?: number
+    toolCallId?: string
+  } | null>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -322,7 +336,15 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         selectedTools,
         setSelectedTools,
         toolInUse,
-        setToolInUse
+        setToolInUse,
+
+        // INTERACTIVE CANVAS ARTIFACT
+        canvasArtifact,
+        setCanvasArtifact,
+
+        // LAST TOOL MESSAGE WITH HTML FOR CANVAS
+        lastCanvasToolMessage,
+        setLastCanvasToolMessage
       }}
     >
       {children}

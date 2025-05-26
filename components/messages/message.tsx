@@ -23,6 +23,7 @@ import { TextareaAutosize } from "../ui/textarea-autosize"
 import { WithTooltip } from "../ui/with-tooltip"
 import { MessageActions } from "./message-actions"
 import { MessageMarkdown } from "./message-markdown"
+import { InteractiveCanvas } from "@/components/artifacts/InteractiveCanvas"
 
 const ICON_SIZE = 32
 
@@ -59,7 +60,10 @@ export const Message: FC<MessageProps> = ({
     assistantImages,
     toolInUse,
     files,
-    models
+    models,
+    setCanvasArtifact,
+    lastCanvasToolMessage,
+    setLastCanvasToolMessage
   } = useContext(ChatbotUIContext)
 
   const { handleSendMessage } = useChatHandler()
@@ -124,7 +128,23 @@ export const Message: FC<MessageProps> = ({
       input.focus()
       input.setSelectionRange(input.value.length, input.value.length)
     }
-  }, [isEditing])
+  }, [isEditing, message.content])
+
+  // Persist the last tool message with HTML for the Interactive Canvas
+  useEffect(() => {
+    if (message.role === "tool") {
+      try {
+        const content = JSON.parse(message.content)
+        if (content && (content.html || content.htmlSource)) {
+          setLastCanvasToolMessage({
+            html: content.html || content.htmlSource,
+            canvasHeight: content.canvasHeight,
+            toolCallId: content.tool_call_id || undefined
+          })
+        }
+      } catch {}
+    }
+  }, [message, setLastCanvasToolMessage])
 
   const MODEL_DATA = [
     ...models.map(model => ({
@@ -178,6 +198,24 @@ export const Message: FC<MessageProps> = ({
     }
     return acc
   }, fileAccumulator)
+
+  console.log("[CANVAS DEBUG] Rendering message:", message)
+
+  if (message.role === "tool") {
+    console.log("[CANVAS DEBUG] Tool message content:", message.content)
+    try {
+      const content = JSON.parse(message.content)
+      console.log("[CANVAS DEBUG] Parsed tool content:", content)
+      if (
+        content &&
+        (content.toolName === "render_interactive_canvas" || content.html)
+      ) {
+        console.log("[CANVAS DEBUG] Showing Open in Interactive Canvas button.")
+      }
+    } catch (err) {
+      console.log("[CANVAS DEBUG] Failed to parse tool content:", err)
+    }
+  }
 
   return (
     <div
@@ -307,6 +345,62 @@ export const Message: FC<MessageProps> = ({
           ) : (
             <MessageMarkdown content={message.content} />
           )}
+          {/* Always show Interactive Canvas Open Button for tool messages (for testing) */}
+          {message.role === "tool" && (
+            <button
+              className="mt-2 rounded bg-purple-600 px-2 py-1 text-xs text-white hover:bg-purple-700"
+              onClick={() => {
+                try {
+                  const content = JSON.parse(message.content)
+                  if (content && (content.html || content.htmlSource)) {
+                    console.log(
+                      "[CANVAS DEBUG] (FORCE BUTTON) Open in Interactive Canvas clicked. Content:",
+                      content
+                    )
+                    setCanvasArtifact({
+                      html: content.html || content.htmlSource,
+                      canvasHeight: content.canvasHeight,
+                      toolCallId: content.tool_call_id || undefined
+                    })
+                  } else {
+                    console.log(
+                      "[CANVAS DEBUG] (FORCE BUTTON) Tool message parsed but no html property:",
+                      content
+                    )
+                  }
+                } catch (err) {
+                  console.log(
+                    "[CANVAS DEBUG] (FORCE BUTTON) Failed to parse tool content as JSON:",
+                    err,
+                    message.content
+                  )
+                }
+              }}
+            >
+              Open in Interactive Canvas
+            </button>
+          )}
+
+          {/* For testing: Automatically render InteractiveCanvas inline for tool messages with html */}
+          {message.role === "tool" &&
+            (() => {
+              try {
+                const content = JSON.parse(message.content)
+                if (content && (content.html || content.htmlSource)) {
+                  return (
+                    <div className="mt-4">
+                      <InteractiveCanvas
+                        htmlSource={content.html || content.htmlSource}
+                        canvasHeight={content.canvasHeight}
+                      />
+                    </div>
+                  )
+                }
+              } catch (err) {
+                // Not JSON or not a tool message
+              }
+              return null
+            })()}
         </div>
 
         {fileItems.length > 0 && (
@@ -376,34 +470,37 @@ export const Message: FC<MessageProps> = ({
           </div>
         )}
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          {message.image_paths.map((path, index) => {
-            const item = chatImages.find(image => image.path === path)
-
-            return (
-              <Image
-                key={index}
-                className="cursor-pointer rounded hover:opacity-50"
-                src={path.startsWith("data") ? path : item?.base64}
-                alt="message image"
-                width={300}
-                height={300}
-                onClick={() => {
-                  setSelectedImage({
-                    messageId: message.id,
-                    path,
-                    base64: path.startsWith("data") ? path : item?.base64 || "",
-                    url: path.startsWith("data") ? "" : item?.url || "",
-                    file: null
-                  })
-
-                  setShowImagePreview(true)
-                }}
-                loading="lazy"
-              />
-            )
-          })}
-        </div>
+        {Array.isArray(message.image_paths) &&
+          message.image_paths.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {message.image_paths.map((path, index) => {
+                const item = chatImages.find(image => image.path === path)
+                return (
+                  <Image
+                    key={index}
+                    className="cursor-pointer rounded hover:opacity-50"
+                    src={path.startsWith("data") ? path : item?.base64}
+                    alt="message image"
+                    width={300}
+                    height={300}
+                    onClick={() => {
+                      setSelectedImage({
+                        messageId: message.id,
+                        path,
+                        base64: path.startsWith("data")
+                          ? path
+                          : item?.base64 || "",
+                        url: path.startsWith("data") ? "" : item?.url || "",
+                        file: null
+                      })
+                      setShowImagePreview(true)
+                    }}
+                    loading="lazy"
+                  />
+                )
+              })}
+            </div>
+          )}
         {isEditing && (
           <div className="mt-4 flex justify-center space-x-2">
             <Button size="sm" onClick={handleSendEdit}>
