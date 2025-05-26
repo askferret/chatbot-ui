@@ -77,7 +77,7 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [userInput, setUserInput] = useState<string>("")
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatSettings, setChatSettings] = useState<ChatSettings>({
-    model: "gpt-4-turbo-preview",
+    model: "gpt-4o",
     prompt: "You are a helpful AI assistant.",
     temperature: 0.5,
     contextLength: 4000,
@@ -125,29 +125,30 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
 
   useEffect(() => {
     ;(async () => {
-      const profile = await fetchStartingData()
+      // Fetch and set hosted models from the new /api/models endpoint
+      const hostedModels = await fetchHostedModels()
+      setAvailableHostedModels(hostedModels || [])
+      console.log("[GlobalState] availableHostedModels:", hostedModels)
 
-      if (profile) {
-        const hostedModelRes = await fetchHostedModels(profile)
-        if (!hostedModelRes) return
-
-        setEnvKeyMap(hostedModelRes.envKeyMap)
-        setAvailableHostedModels(hostedModelRes.hostedModels)
-
-        if (
-          profile["openrouter_api_key"] ||
-          hostedModelRes.envKeyMap["openrouter"]
-        ) {
-          const openRouterModels = await fetchOpenRouterModels()
-          if (!openRouterModels) return
+      // Fetch and set OpenRouter models if available
+      if (process.env.NEXT_PUBLIC_OPENROUTER_API_KEY) {
+        const openRouterModels = await fetchOpenRouterModels()
+        if (openRouterModels) {
           setAvailableOpenRouterModels(openRouterModels)
+          console.log(
+            "[GlobalState] availableOpenRouterModels:",
+            openRouterModels
+          )
         }
       }
 
+      // Fetch and set local Ollama models if available
       if (process.env.NEXT_PUBLIC_OLLAMA_URL) {
         const localModels = await fetchOllamaModels()
-        if (!localModels) return
-        setAvailableLocalModels(localModels)
+        if (localModels) {
+          setAvailableLocalModels(localModels)
+          console.log("[GlobalState] availableLocalModels:", localModels)
+        }
       }
     })()
   }, [])

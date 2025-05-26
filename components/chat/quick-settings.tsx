@@ -24,6 +24,10 @@ import { set } from "date-fns"
 
 interface QuickSettingsProps {}
 
+/**
+ * QuickSettings component for selecting presets and assistants.
+ * Uses availableHostedModels, availableLocalModels, and availableOpenRouterModels from context for model details.
+ */
 export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
   const { t } = useTranslation()
 
@@ -42,7 +46,10 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
     setChatFiles,
     setSelectedTools,
     setShowFilesDisplay,
-    selectedWorkspace
+    selectedWorkspace,
+    availableHostedModels,
+    availableLocalModels,
+    availableOpenRouterModels
   } = useContext(ChatbotUIContext)
 
   const inputRef = useRef<HTMLInputElement>(null)
@@ -178,7 +185,17 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
         image => image.path === selectedAssistant?.image_path
       )?.base64 || ""
 
-  const modelDetails = LLM_LIST.find(
+  // Build the allModels array from context only
+  const allModels = [
+    ...availableHostedModels,
+    ...availableLocalModels,
+    ...availableOpenRouterModels
+  ]
+  console.log("[QuickSettings] allModels:", allModels)
+  console.log("[QuickSettings] selectedPreset?.model:", selectedPreset?.model)
+
+  // Find model details from allModels
+  const modelDetails = allModels.find(
     model => model.modelId === selectedPreset?.model
   )
 

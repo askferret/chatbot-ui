@@ -76,15 +76,9 @@ export const SidebarSwitcher: FC<SidebarSwitcherProps> = ({
         />
       </TabsList>
 
-      <div className="flex flex-col items-center space-y-4">
-        {/* TODO */}
-        {/* <WithTooltip display={<div>Import</div>} trigger={<Import />} /> */}
-
-        {/* TODO */}
-        {/* <Alerts /> */}
-
+      <div className="mt-auto flex flex-col items-center space-y-4 pt-2">
         <WithTooltip
-          display={<div>Profile Settings</div>}
+          display={<div>Profile & API Keys</div>}
           trigger={<ProfileSettings />}
         />
       </div>

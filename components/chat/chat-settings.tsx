@@ -10,13 +10,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 
 interface ChatSettingsProps {}
 
+/**
+ * ChatSettings component displays and manages chat model settings.
+ * Uses availableHostedModels, availableLocalModels, and availableOpenRouterModels from context.
+ */
 export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
   useHotkey("i", () => handleClick())
 
   const {
     chatSettings,
     setChatSettings,
-    models,
     availableHostedModels,
     availableLocalModels,
     availableOpenRouterModels
@@ -48,19 +51,14 @@ export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
 
   if (!chatSettings) return null
 
+  // Build the allModels array from context only
   const allModels = [
-    ...models.map(model => ({
-      modelId: model.model_id as LLMID,
-      modelName: model.name,
-      provider: "custom" as ModelProvider,
-      hostedId: model.id,
-      platformLink: "",
-      imageInput: false
-    })),
     ...availableHostedModels,
     ...availableLocalModels,
     ...availableOpenRouterModels
   ]
+  console.log("[ChatSettings] allModels:", allModels)
+  console.log("[ChatSettings] current model:", chatSettings.model)
 
   const fullModel = allModels.find(llm => llm.modelId === chatSettings.model)
 

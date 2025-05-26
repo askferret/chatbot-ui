@@ -10,7 +10,18 @@ import {
 } from "@/types"
 import { AssistantImage } from "@/types/images/assistant-image"
 import { VALID_ENV_KEYS } from "@/types/valid-keys"
-import { Dispatch, SetStateAction, createContext } from "react"
+import {
+  Dispatch,
+  SetStateAction,
+  createContext,
+  useEffect,
+  useState
+} from "react"
+import {
+  fetchHostedModels,
+  fetchOllamaModels,
+  fetchOpenRouterModels
+} from "@/lib/models/fetch-models"
 
 interface ChatbotUIContext {
   // PROFILE STORE
@@ -263,3 +274,15 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   toolInUse: "none",
   setToolInUse: () => {}
 })
+
+// Example usage in your context provider:
+// useEffect(() => {
+//   async function loadModels() {
+//     const hostedModels = await fetchHostedModels();
+//     setAvailableHostedModels(hostedModels);
+//     // Optionally, fetch and set local/OpenRouter models as well
+//     // setAvailableLocalModels(await fetchOllamaModels());
+//     // setAvailableOpenRouterModels(await fetchOpenRouterModels());
+//   }
+//   loadModels();
+// }, []);
