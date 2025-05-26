@@ -2,8 +2,12 @@ import { LLM } from "@/types"
 
 const OPENAI_PLATORM_LINK = "https://platform.openai.com/docs/overview"
 
-// OpenAI Models (UPDATED 1/25/24) -----------------------------
-const GPT4o: LLM = {
+/**
+ * OpenAI Models (UPDATED 05/2025)
+ * @see https://platform.openai.com/docs/models
+ * @type {LLM[]}
+ */
+const GPT4O: LLM = {
   modelId: "gpt-4o",
   modelName: "GPT-4o",
   provider: "openai",
@@ -18,12 +22,11 @@ const GPT4o: LLM = {
   }
 }
 
-// GPT-4 Turbo (UPDATED 1/25/24)
-const GPT4Turbo: LLM = {
-  modelId: "gpt-4-turbo-preview",
-  modelName: "GPT-4 Turbo",
+const GPT41: LLM = {
+  modelId: "gpt-4.1",
+  modelName: "GPT-4.1",
   provider: "openai",
-  hostedId: "gpt-4-turbo-preview",
+  hostedId: "gpt-4.1",
   platformLink: OPENAI_PLATORM_LINK,
   imageInput: true,
   pricing: {
@@ -34,45 +37,43 @@ const GPT4Turbo: LLM = {
   }
 }
 
-// GPT-4 Vision (UPDATED 12/18/23)
-const GPT4Vision: LLM = {
-  modelId: "gpt-4-vision-preview",
-  modelName: "GPT-4 Vision",
+const GPT41MINI: LLM = {
+  modelId: "gpt-4.1-mini",
+  modelName: "GPT-4.1 Mini",
   provider: "openai",
-  hostedId: "gpt-4-vision-preview",
+  hostedId: "gpt-4.1-mini",
   platformLink: OPENAI_PLATORM_LINK,
   imageInput: true,
   pricing: {
     currency: "USD",
     unit: "1M tokens",
-    inputCost: 10
+    inputCost: 2,
+    outputCost: 6
   }
 }
 
-// GPT-4 (UPDATED 1/29/24)
-const GPT4: LLM = {
-  modelId: "gpt-4",
-  modelName: "GPT-4",
+const GPT41NANO: LLM = {
+  modelId: "gpt-4.1-nano",
+  modelName: "GPT-4.1 Nano",
   provider: "openai",
-  hostedId: "gpt-4",
+  hostedId: "gpt-4.1-nano",
   platformLink: OPENAI_PLATORM_LINK,
-  imageInput: false,
+  imageInput: true,
   pricing: {
     currency: "USD",
     unit: "1M tokens",
-    inputCost: 30,
-    outputCost: 60
+    inputCost: 1,
+    outputCost: 3
   }
 }
 
-// GPT-3.5 Turbo (UPDATED 1/25/24)
-const GPT3_5Turbo: LLM = {
-  modelId: "gpt-3.5-turbo",
-  modelName: "GPT-3.5 Turbo",
+const O3MINI: LLM = {
+  modelId: "o3-mini",
+  modelName: "O3 Mini",
   provider: "openai",
-  hostedId: "gpt-3.5-turbo",
+  hostedId: "o3-mini",
   platformLink: OPENAI_PLATORM_LINK,
-  imageInput: false,
+  imageInput: true,
   pricing: {
     currency: "USD",
     unit: "1M tokens",
@@ -81,10 +82,30 @@ const GPT3_5Turbo: LLM = {
   }
 }
 
+const GPT4O_MINI_AUDIO_PREVIEW: LLM = {
+  modelId: "gpt-4o-mini-audio-preview",
+  modelName: "GPT-4o Mini Audio Preview",
+  provider: "openai",
+  hostedId: "gpt-4o-mini-audio-preview",
+  platformLink: OPENAI_PLATORM_LINK,
+  imageInput: true,
+  pricing: {
+    currency: "USD",
+    unit: "1M tokens",
+    inputCost: 0.5,
+    outputCost: 1.5
+  }
+}
+
+/**
+ * List of all supported OpenAI models (May 2025)
+ * @type {LLM[]}
+ */
 export const OPENAI_LLM_LIST: LLM[] = [
-  GPT4o,
-  GPT4Turbo,
-  GPT4Vision,
-  GPT4,
-  GPT3_5Turbo
+  GPT4O,
+  GPT41,
+  GPT41MINI,
+  GPT41NANO,
+  O3MINI,
+  GPT4O_MINI_AUDIO_PREVIEW
 ]

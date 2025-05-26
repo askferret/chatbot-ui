@@ -3,78 +3,16 @@ import { LLM } from "@/types"
 const ANTHROPIC_PLATFORM_LINK =
   "https://docs.anthropic.com/claude/reference/getting-started-with-the-api"
 
-// Anthropic Models (UPDATED 06/20/24) -----------------------------
-
-// Claude 2 (UPDATED 12/21/23)
-const CLAUDE_2: LLM = {
-  modelId: "claude-2.1",
-  modelName: "Claude 2",
+/**
+ * Anthropic Claude Models (UPDATED 05/2025)
+ * @see https://docs.anthropic.com/en/docs/about-claude/models/overview
+ * @type {LLM[]}
+ */
+const CLAUDE_OPUS_4: LLM = {
+  modelId: "claude-opus-4-20250514",
+  modelName: "Claude Opus 4",
   provider: "anthropic",
-  hostedId: "claude-2.1",
-  platformLink: ANTHROPIC_PLATFORM_LINK,
-  imageInput: false,
-  pricing: {
-    currency: "USD",
-    unit: "1M tokens",
-    inputCost: 8,
-    outputCost: 24
-  }
-}
-
-// Claude Instant (UPDATED 12/21/23)
-const CLAUDE_INSTANT: LLM = {
-  modelId: "claude-instant-1.2",
-  modelName: "Claude Instant",
-  provider: "anthropic",
-  hostedId: "claude-instant-1.2",
-  platformLink: ANTHROPIC_PLATFORM_LINK,
-  imageInput: false,
-  pricing: {
-    currency: "USD",
-    unit: "1M tokens",
-    inputCost: 0.8,
-    outputCost: 2.4
-  }
-}
-
-// Claude 3 Haiku (UPDATED 03/13/24)
-const CLAUDE_3_HAIKU: LLM = {
-  modelId: "claude-3-haiku-20240307",
-  modelName: "Claude 3 Haiku",
-  provider: "anthropic",
-  hostedId: "claude-3-haiku-20240307",
-  platformLink: ANTHROPIC_PLATFORM_LINK,
-  imageInput: true,
-  pricing: {
-    currency: "USD",
-    unit: "1M tokens",
-    inputCost: 0.25,
-    outputCost: 1.25
-  }
-}
-
-// Claude 3 Sonnet (UPDATED 03/04/24)
-const CLAUDE_3_SONNET: LLM = {
-  modelId: "claude-3-sonnet-20240229",
-  modelName: "Claude 3 Sonnet",
-  provider: "anthropic",
-  hostedId: "claude-3-sonnet-20240229",
-  platformLink: ANTHROPIC_PLATFORM_LINK,
-  imageInput: true,
-  pricing: {
-    currency: "USD",
-    unit: "1M tokens",
-    inputCost: 3,
-    outputCost: 15
-  }
-}
-
-// Claude 3 Opus (UPDATED 03/04/24)
-const CLAUDE_3_OPUS: LLM = {
-  modelId: "claude-3-opus-20240229",
-  modelName: "Claude 3 Opus",
-  provider: "anthropic",
-  hostedId: "claude-3-opus-20240229",
+  hostedId: "claude-opus-4-20250514",
   platformLink: ANTHROPIC_PLATFORM_LINK,
   imageInput: true,
   pricing: {
@@ -85,12 +23,11 @@ const CLAUDE_3_OPUS: LLM = {
   }
 }
 
-// Claude 3.5 Sonnet (UPDATED 06/20/24)
-const CLAUDE_3_5_SONNET: LLM = {
-  modelId: "claude-3-5-sonnet-20240620",
-  modelName: "Claude 3.5 Sonnet",
+const CLAUDE_SONNET_4: LLM = {
+  modelId: "claude-sonnet-4-20250514",
+  modelName: "Claude Sonnet 4",
   provider: "anthropic",
-  hostedId: "claude-3-5-sonnet-20240620",
+  hostedId: "claude-sonnet-4-20250514",
   platformLink: ANTHROPIC_PLATFORM_LINK,
   imageInput: true,
   pricing: {
@@ -101,11 +38,59 @@ const CLAUDE_3_5_SONNET: LLM = {
   }
 }
 
+const CLAUDE_3_7_SONNET: LLM = {
+  modelId: "claude-3-7-sonnet-latest",
+  modelName: "Claude Sonnet 3.7",
+  provider: "anthropic",
+  hostedId: "claude-3-7-sonnet-latest",
+  platformLink: ANTHROPIC_PLATFORM_LINK,
+  imageInput: true,
+  pricing: {
+    currency: "USD",
+    unit: "1M tokens",
+    inputCost: 3,
+    outputCost: 15
+  }
+}
+
+const CLAUDE_3_5_HAIKU: LLM = {
+  modelId: "claude-3-5-haiku-latest",
+  modelName: "Claude Haiku 3.5",
+  provider: "anthropic",
+  hostedId: "claude-3-5-haiku-latest",
+  platformLink: ANTHROPIC_PLATFORM_LINK,
+  imageInput: true,
+  pricing: {
+    currency: "USD",
+    unit: "1M tokens",
+    inputCost: 0.8,
+    outputCost: 4
+  }
+}
+
+const CLAUDE_3_5_SONNET_V2: LLM = {
+  modelId: "claude-3-5-sonnet-latest",
+  modelName: "Claude Sonnet 3.5 v2",
+  provider: "anthropic",
+  hostedId: "claude-3-5-sonnet-latest",
+  platformLink: ANTHROPIC_PLATFORM_LINK,
+  imageInput: true,
+  pricing: {
+    currency: "USD",
+    unit: "1M tokens",
+    inputCost: 3,
+    outputCost: 15
+  }
+}
+
+/**
+ * List of all supported Anthropic Claude models (May 2025)
+ * @type {LLM[]}
+ */
 export const ANTHROPIC_LLM_LIST: LLM[] = [
-  CLAUDE_2,
-  CLAUDE_INSTANT,
-  CLAUDE_3_HAIKU,
-  CLAUDE_3_SONNET,
-  CLAUDE_3_OPUS,
-  CLAUDE_3_5_SONNET
+  CLAUDE_OPUS_4,
+  CLAUDE_SONNET_4,
+  CLAUDE_3_7_SONNET,
+  CLAUDE_3_5_HAIKU,
+  CLAUDE_3_5_SONNET_V2
 ]

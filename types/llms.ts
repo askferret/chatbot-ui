@@ -1,5 +1,9 @@
 import { ModelProvider } from "."
 
+/**
+ * All supported LLM model IDs for the application.
+ * @typedef {string} LLMID
+ */
 export type LLMID =
   | OpenAILLMID
   | GoogleLLMID
@@ -8,26 +12,39 @@ export type LLMID =
   | GroqLLMID
   | PerplexityLLMID
 
-// OpenAI Models (UPDATED 5/13/24)
+/**
+ * OpenAI Model IDs (UPDATED 05/2025)
+ * @see https://platform.openai.com/docs/models
+ */
 export type OpenAILLMID =
   | "gpt-4o" // GPT-4o
   | "gpt-4.1" // GPT-4.1
   | "gpt-4.1-mini" // GPT-4.1 Mini
   | "gpt-4.1-nano" // GPT-4.1 Nano
   | "o3-mini" // O3 Mini
+  | "gpt-4o-mini-audio-preview" // GPT-4o Mini Audio Preview
 
-// Google Models
+/**
+ * Google Model IDs (UPDATED 05/2025)
+ * @see https://ai.google.dev/gemini-api/docs/models
+ */
 export type GoogleLLMID =
-  | "gemini-pro" // Gemini Pro
-  | "gemini-pro-vision" // Gemini Pro Vision
+  | "gemini-2.5-pro-preview-05-06" // Gemini 2.5 Pro Preview
+  | "gemini-2.5-flash-preview-05-20" // Gemini 2.5 Flash Preview
+  | "gemini-2.0-flash" // Gemini 2.0 Flash
   | "gemini-1.5-pro-latest" // Gemini 1.5 Pro
   | "gemini-1.5-flash" // Gemini 1.5 Flash
 
-// Anthropic Models
+/**
+ * Anthropic Model IDs (UPDATED 05/2025)
+ * @see https://docs.anthropic.com/en/docs/about-claude/models/overview
+ */
 export type AnthropicLLMID =
-  | "claude-3-5-haiku" // Claude 3.5 Haiku
-  | "claude-4-sonnet" // Claude 4 Sonnet
-  | "claude-3-7-sonnet" // Claude 3.7 Sonnet
+  | "claude-opus-4-20250514" // Claude Opus 4
+  | "claude-sonnet-4-20250514" // Claude Sonnet 4
+  | "claude-3-7-sonnet-latest" // Claude Sonnet 3.7
+  | "claude-3-5-haiku-latest" // Claude Haiku 3.5
+  | "claude-3-5-sonnet-latest" // Claude Sonnet 3.5 v2
 
 // Mistral Models
 export type MistralLLMID =
