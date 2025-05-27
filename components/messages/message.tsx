@@ -23,15 +23,19 @@ import { TextareaAutosize } from "../ui/textarea-autosize"
 import { WithTooltip } from "../ui/with-tooltip"
 import { MessageActions } from "./message-actions"
 import { MessageMarkdown } from "./message-markdown"
+import {
+  MessageContentRenderer,
+  RenderableMessage
+} from "./message-content-renderer"
 
 const ICON_SIZE = 32
 
 interface MessageProps {
-  message: Tables<"messages">
+  message: RenderableMessage
   fileItems: Tables<"file_items">[]
   isEditing: boolean
   isLast: boolean
-  onStartEdit: (message: Tables<"messages">) => void
+  onStartEdit: (message: RenderableMessage) => void
   onCancelEdit: () => void
   onSubmitEdit: (value: string, sequenceNumber: number) => void
 }
@@ -305,7 +309,7 @@ export const Message: FC<MessageProps> = ({
               maxRows={20}
             />
           ) : (
-            <MessageMarkdown content={message.content} />
+            <MessageContentRenderer message={message} />
           )}
         </div>
 

@@ -13,6 +13,14 @@ export async function POST(request: Request) {
     messages: any[]
     selectedTools: Tables<"tools">[]
   }
+  console.log(
+    "[TOOLS_API] Received request. Selected Tools:",
+    selectedTools.map(t => t.name)
+  )
+  console.log(
+    "[TOOLS_API] Initial messages:",
+    JSON.stringify(messages.slice(-2), null, 2)
+  ) // Log last 2 messages
 
   try {
     const profile = await getServerProfile()
@@ -55,42 +63,86 @@ export async function POST(request: Request) {
           requestInBody: convertedSchema.routes[0].requestInBody
         })
       } catch (error: any) {
-        console.error("Error converting schema", error)
+        console.error(
+          "Error converting schema for tool:",
+          selectedTool.name,
+          error
+        )
+        // Optionally, continue to next tool or return an error response for this tool
       }
     }
+
+    console.log(
+      "[TOOLS_API] Tools prepared for LLM:",
+      JSON.stringify(allTools, null, 2)
+    )
 
     const firstResponse = await openai.chat.completions.create({
       model: chatSettings.model as ChatCompletionCreateParamsBase["model"],
       messages,
-      tools: allTools.length > 0 ? allTools : undefined
+      tools: allTools.length > 0 ? allTools : undefined,
+      tool_choice: allTools.length > 0 ? "auto" : undefined
     })
 
     const message = firstResponse.choices[0].message
-    messages.push(message)
+    console.log(
+      "[TOOLS_API] LLM first response message:",
+      JSON.stringify(message, null, 2)
+    )
+    messages.push(message) // Add LLM response (which may include tool calls) to messages array
     const toolCalls = message.tool_calls || []
 
     if (toolCalls.length === 0) {
-      return new Response(message.content, {
-        headers: {
-          "Content-Type": "application/json"
-        }
-      })
+      if (message.content) {
+        return new Response(
+          JSON.stringify({
+            toolOutputType: "markdown",
+            content: message.content,
+            meta: { source: "llmDirectResponse" }
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        )
+      } else {
+        return new Response(
+          JSON.stringify({
+            toolOutputType: "error",
+            content: "LLM returned no content and no tool calls.",
+            meta: { source: "llmDirectResponse", errorCode: "NO_LLM_CONTENT" }
+          }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
+        )
+      }
     }
 
+    // If there are tool calls, process them
     if (toolCalls.length > 0) {
+      console.log(
+        "[TOOLS_API] LLM wants to call tools:",
+        JSON.stringify(toolCalls, null, 2)
+      )
       for (const toolCall of toolCalls) {
         const functionCall = toolCall.function
         const functionName = functionCall.name
         const argumentsString = toolCall.function.arguments.trim()
         const parsedArgs = JSON.parse(argumentsString)
 
-        // Find the schema detail that contains the function name
         const schemaDetail = schemaDetails.find(detail =>
           Object.values(detail.routeMap).includes(functionName)
         )
 
         if (!schemaDetail) {
-          throw new Error(`Function ${functionName} not found in any schema`)
+          // This specific tool call cannot be processed, add an error message for it
+          messages.push({
+            tool_call_id: toolCall.id,
+            role: "tool",
+            name: functionName,
+            content: JSON.stringify({
+              error: `Function ${functionName} not found in any schema.`,
+              toolOutputType: "error",
+              meta: { toolName: functionName, errorCode: "SCHEMA_NOT_FOUND" }
+            })
+          })
+          continue // Continue to the next tool call if any
         }
 
         const pathTemplate = Object.keys(schemaDetail.routeMap).find(
@@ -98,121 +150,243 @@ export async function POST(request: Request) {
         )
 
         if (!pathTemplate) {
-          throw new Error(`Path for function ${functionName} not found`)
+          messages.push({
+            tool_call_id: toolCall.id,
+            role: "tool",
+            name: functionName,
+            content: JSON.stringify({
+              error: `Path for function ${functionName} not found.`,
+              toolOutputType: "error",
+              meta: { toolName: functionName, errorCode: "PATH_NOT_FOUND" }
+            })
+          })
+          continue
         }
 
         const path = pathTemplate.replace(/:(\w+)/g, (_, paramName) => {
           const value = parsedArgs.parameters[paramName]
           if (!value) {
-            throw new Error(
-              `Parameter ${paramName} not found for function ${functionName}`
+            console.warn(
+              `Missing parameter ${paramName} for function ${functionName}`
             )
+            return ""
           }
           return encodeURIComponent(value)
         })
 
-        if (!path) {
-          throw new Error(`Path for function ${functionName} not found`)
-        }
+        let externalToolResponse: globalThis.Response
+        try {
+          console.log(
+            `[TOOLS_API] Calling tool: ${functionName} for tool ID: ${toolCall.id}. Arguments: ${JSON.stringify(parsedArgs, null, 2)}. Schema Details: ${JSON.stringify(schemaDetail, null, 2)}`
+          )
 
-        // Determine if the request should be in the body or as a query
-        const isRequestInBody = schemaDetail.requestInBody
-        let data = {}
-
-        if (isRequestInBody) {
-          // If the type is set to body
-          let headers = {
-            "Content-Type": "application/json"
-          }
-
-          // Check if custom headers are set
-          const customHeaders = schemaDetail.headers // Moved this line up to the loop
-          // Check if custom headers are set and are of type string
-          if (customHeaders && typeof customHeaders === "string") {
-            let parsedCustomHeaders = JSON.parse(customHeaders) as Record<
-              string,
-              string
-            >
-
-            headers = {
-              ...headers,
-              ...parsedCustomHeaders
+          // Special handling for mermaid.ink if this is the mermaid tool
+          if (
+            functionName === "renderMermaidDiagram" &&
+            schemaDetail.url === "https://mermaid.ink"
+          ) {
+            const mermaidCode =
+              parsedArgs.code ||
+              (parsedArgs.requestBody && parsedArgs.requestBody.code)
+            if (!mermaidCode) {
+              throw new Error(
+                "Mermaid code is missing in arguments for renderMermaidDiagram."
+              )
             }
-          }
+            // mermaid.ink expects the diagram to be base64 encoded in the URL path for SVGs
+            // Standard Base64 encoding, then make it URL-safe
+            const base64Mermaid = Buffer.from(mermaidCode)
+              .toString("base64")
+              .replace(/\+/g, "-") // Convert '+' to '-'
+              .replace(/\//g, "_") // Convert '/' to '_'
+              .replace(/=+$/, "") // Remove trailing '='
 
-          const fullUrl = schemaDetail.url + path
-
-          const bodyContent = parsedArgs.requestBody || parsedArgs
-
-          const requestInit = {
-            method: "POST",
-            headers,
-            body: JSON.stringify(bodyContent) // Use the extracted requestBody or the entire parsedArgs
-          }
-
-          const response = await fetch(fullUrl, requestInit)
-
-          if (!response.ok) {
-            data = {
-              error: response.statusText
+            const mermaidInkUrl = `${schemaDetail.url}/svg/${base64Mermaid}`
+            console.log(
+              `[TOOLS_API] Constructed mermaid.ink GET URL: ${mermaidInkUrl}`
+            )
+            externalToolResponse = await fetch(mermaidInkUrl, { method: "GET" })
+          } else if (schemaDetail.requestInBody) {
+            let headers = { "Content-Type": "application/json" }
+            if (
+              schemaDetail.headers &&
+              typeof schemaDetail.headers === "string"
+            ) {
+              try {
+                headers = { ...headers, ...JSON.parse(schemaDetail.headers) }
+              } catch (e) {
+                console.error("Failed to parse custom headers", e)
+              }
             }
+            const fullUrl = schemaDetail.url + path
+            const bodyContent = parsedArgs.requestBody || parsedArgs
+            externalToolResponse = await fetch(fullUrl, {
+              method: "POST",
+              headers,
+              body: JSON.stringify(bodyContent)
+            })
           } else {
-            data = await response.json()
+            const queryParams = new URLSearchParams(
+              parsedArgs.parameters
+            ).toString()
+            const fullUrl =
+              schemaDetail.url + path + (queryParams ? "?" + queryParams : "")
+            let headers = {}
+            if (
+              schemaDetail.headers &&
+              typeof schemaDetail.headers === "string"
+            ) {
+              try {
+                headers = JSON.parse(schemaDetail.headers)
+              } catch (e) {
+                console.error("Failed to parse custom headers", e)
+              }
+            }
+            externalToolResponse = await fetch(fullUrl, {
+              method: "GET",
+              headers
+            })
           }
-        } else {
-          // If the type is set to query
-          const queryParams = new URLSearchParams(
-            parsedArgs.parameters
-          ).toString()
-          const fullUrl =
-            schemaDetail.url + path + (queryParams ? "?" + queryParams : "")
 
-          let headers = {}
+          console.log(
+            `[TOOLS_API] Response from tool ${functionName} (ID: ${toolCall.id}): Status: ${externalToolResponse.status}, Content-Type: ${externalToolResponse.headers.get("Content-Type")}`
+          )
 
-          // Check if custom headers are set
-          const customHeaders = schemaDetail.headers
-          if (customHeaders && typeof customHeaders === "string") {
-            headers = JSON.parse(customHeaders)
+          const externalToolContentType =
+            externalToolResponse.headers.get("Content-Type")
+
+          if (
+            externalToolContentType &&
+            externalToolContentType.includes("image/svg+xml")
+          ) {
+            const svgContent = await externalToolResponse.text()
+            // If a tool returns SVG, we return this directly to the client.
+            return new Response(
+              JSON.stringify({
+                toolOutputType: "svg",
+                content: svgContent,
+                meta: {
+                  toolName: functionName,
+                  schemaTitle: schemaDetail.title
+                }
+              }),
+              { headers: { "Content-Type": "application/json" } }
+            )
           }
 
-          const response = await fetch(fullUrl, {
-            method: "GET",
-            headers: headers
+          if (!externalToolResponse.ok) {
+            const errorText = await externalToolResponse.text()
+            messages.push({
+              tool_call_id: toolCall.id,
+              role: "tool",
+              name: functionName,
+              content: JSON.stringify({
+                error: `Tool ${functionName} failed with status ${externalToolResponse.status}. Details: ${errorText || externalToolResponse.statusText}`,
+                toolOutputType: "error", // Ensure client can render this as an error
+                meta: {
+                  toolName: functionName,
+                  errorCode: `TOOL_HTTP_${externalToolResponse.status}`,
+                  details: errorText || externalToolResponse.statusText
+                }
+              })
+            })
+            continue // Move to next tool call if there are multiple
+          }
+
+          // For other content types (e.g., JSON, text) that will be processed by LLM further
+          let toolData
+          if (
+            externalToolContentType &&
+            externalToolContentType.includes("application/json")
+          ) {
+            toolData = await externalToolResponse.json()
+          } else {
+            toolData = { textContent: await externalToolResponse.text() } // Wrap non-JSON in an object
+          }
+          messages.push({
+            tool_call_id: toolCall.id,
+            role: "tool",
+            name: functionName,
+            content: JSON.stringify(toolData) // LLM expects content to be a string
           })
-
-          if (!response.ok) {
-            data = {
-              error: response.statusText
-            }
-          } else {
-            data = await response.json()
-          }
+        } catch (error: any) {
+          console.error(
+            `Error during tool execution for ${functionName}:`,
+            error
+          )
+          messages.push({
+            tool_call_id: toolCall.id,
+            role: "tool",
+            name: functionName,
+            content: JSON.stringify({
+              error: `Exception during tool execution for ${functionName}: ${error.message}`,
+              toolOutputType: "error",
+              meta: {
+                toolName: functionName,
+                errorCode: "TOOL_EXECUTION_EXCEPTION",
+                details: error.stack
+              }
+            })
+          })
+          continue // Continue to next tool call
         }
+      } // end of for loop for toolCalls
 
-        messages.push({
-          tool_call_id: toolCall.id,
-          role: "tool",
-          name: functionName,
-          content: JSON.stringify(data)
-        })
+      // After processing all tool calls (those that didn't return directly),
+      // make a second call to OpenAI with the tool responses included in messages.
+      const secondResponse = await openai.chat.completions.create({
+        model: chatSettings.model as ChatCompletionCreateParamsBase["model"],
+        messages
+        // Removed tools and tool_choice for the second call as per OpenAI guidance
+        // if we only want the LLM to synthesize based on tool responses.
+      })
+
+      const finalMessage = secondResponse.choices[0].message
+      if (finalMessage.content) {
+        return new Response(
+          JSON.stringify({
+            toolOutputType: "markdown",
+            content: finalMessage.content,
+            meta: { source: "llmProcessedToolResponse" }
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        )
+      } else {
+        // Handle cases where the second LLM response might be empty or another tool_call (less common)
+        return new Response(
+          JSON.stringify({
+            toolOutputType: "error",
+            content: "LLM returned no content after processing tool responses.",
+            meta: {
+              source: "llmProcessedToolResponse",
+              errorCode: "NO_FINAL_LLM_CONTENT"
+            }
+          }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
+        )
       }
     }
 
-    const secondResponse = await openai.chat.completions.create({
-      model: chatSettings.model as ChatCompletionCreateParamsBase["model"],
-      messages,
-      stream: true
-    })
-
-    const stream = OpenAIStream(secondResponse)
-
-    return new StreamingTextResponse(stream)
+    // Fallback for unexpected scenarios (should ideally not be reached if logic above is exhaustive)
+    return new Response(
+      JSON.stringify({
+        toolOutputType: "error",
+        content: "An unexpected error occurred in the tools API.",
+        meta: { errorCode: "UNEXPECTED_API_ERROR" }
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    )
   } catch (error: any) {
-    console.error(error)
-    const errorMessage = error.error?.message || "An unexpected error occurred"
-    const errorCode = error.status || 500
-    return new Response(JSON.stringify({ message: errorMessage }), {
-      status: errorCode
-    })
+    console.error("OpenAI Tools API error:", error)
+    const errorMessage = error.message || "An unexpected error occurred."
+    const errorCode = error.code || "OPENAI_API_ERROR"
+    return new Response(
+      JSON.stringify({
+        toolOutputType: "error",
+        content: errorMessage,
+        meta: { errorCode, details: error.stack }
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    )
   }
 }

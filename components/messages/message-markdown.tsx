@@ -3,6 +3,7 @@ import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
 import { MessageCodeBlock } from "./message-codeblock"
 import { MessageMarkdownMemoized } from "./message-markdown-memoized"
+import MermaidBlock from "./mermaid-block"
 
 interface MessageMarkdownProps {
   content: string
@@ -36,6 +37,22 @@ export const MessageMarkdown: FC<MessageMarkdownProps> = ({ content }) => {
           }
 
           const match = /language-(\w+)/.exec(className || "")
+          const language = match && match[1]
+
+          if (
+            language === "mermaid" &&
+            typeof firstChildAsString === "string"
+          ) {
+            return (
+              <MermaidBlock
+                code={firstChildAsString}
+                idKey={
+                  node?.position?.start.offset?.toString() ||
+                  Math.random().toString()
+                }
+              />
+            )
+          }
 
           if (
             typeof firstChildAsString === "string" &&
@@ -51,7 +68,7 @@ export const MessageMarkdown: FC<MessageMarkdownProps> = ({ content }) => {
           return (
             <MessageCodeBlock
               key={Math.random()}
-              language={(match && match[1]) || ""}
+              language={language || ""}
               value={String(childArray).replace(/\n$/, "")}
               {...props}
             />

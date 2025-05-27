@@ -19,6 +19,7 @@ import {
   LLM,
   MessageImage
 } from "@/types"
+import { ToolOutputType } from "@/types/tool-output-type"
 import React from "react"
 import { toast } from "sonner"
 import { v4 as uuidv4 } from "uuid"
@@ -290,60 +291,159 @@ export const processResponse = async (
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
   setToolInUse: React.Dispatch<React.SetStateAction<string>>
 ) => {
-  let fullText = ""
-  let contentToAdd = ""
+  let fullContent = ""
+  let isToolResponseProcessed = false
 
-  if (response.body) {
-    await consumeReadableStream(
-      response.body,
-      chunk => {
-        setFirstTokenReceived(true)
-        setToolInUse("none")
-
-        try {
-          contentToAdd = isHosted
-            ? chunk
-            : // Ollama's streaming endpoint returns new-line separated JSON
-              // objects. A chunk may have more than one of these objects, so we
-              // need to split the chunk by new-lines and handle each one
-              // separately.
-              chunk
-                .trimEnd()
-                .split("\n")
-                .reduce(
-                  (acc, line) => acc + JSON.parse(line).message.content,
-                  ""
-                )
-          fullText += contentToAdd
-        } catch (error) {
-          console.error("Error parsing JSON:", error)
+  // Handle direct JSON response from tools or other specific API endpoints
+  if (
+    isHosted &&
+    response.headers.get("Content-Type")?.includes("application/json")
+  ) {
+    try {
+      const jsonResponse = await response.json()
+      if (jsonResponse.toolOutputType && jsonResponse.content) {
+        const updatedMessage: ChatMessage = {
+          ...lastChatMessage,
+          message: {
+            ...lastChatMessage.message,
+            content: jsonResponse.content,
+            toolOutputType: jsonResponse.toolOutputType as ToolOutputType,
+            meta: jsonResponse.meta
+          }
         }
-
-        setChatMessages(prev =>
-          prev.map(chatMessage => {
-            if (chatMessage.message.id === lastChatMessage.message.id) {
-              const updatedChatMessage: ChatMessage = {
-                message: {
-                  ...chatMessage.message,
-                  content: fullText
-                },
-                fileItems: chatMessage.fileItems
-              }
-
-              return updatedChatMessage
-            }
-
-            return chatMessage
-          })
+        setChatMessages(prevMessages =>
+          prevMessages.map(msg =>
+            msg.message.id === lastChatMessage.message.id ? updatedMessage : msg
+          )
         )
-      },
-      controller.signal
-    )
-
-    return fullText
-  } else {
-    throw new Error("Response body is null")
+        setFirstTokenReceived(true)
+        isToolResponseProcessed = true
+        return jsonResponse.content
+      } else if (jsonResponse.content) {
+        fullContent = jsonResponse.content
+      } else {
+        console.warn(
+          "Received JSON response in unexpected format:",
+          jsonResponse
+        )
+      }
+    } catch (e) {
+      console.error("Error parsing direct JSON response:", e)
+      try {
+        fullContent = await response.text()
+      } catch (textError) {
+        console.error(
+          "Error reading response as text after JSON parse failed:",
+          textError
+        )
+        fullContent = "Error: Could not process API response."
+      }
+    }
   }
+
+  if (isToolResponseProcessed) {
+  }
+
+  const reader = response.body?.getReader()
+  let decoder = new TextDecoder()
+
+  if (!reader) {
+    setChatMessages(prevMessages =>
+      prevMessages.map(msg => {
+        if (msg.message.id === lastChatMessage.message.id) {
+          return {
+            ...msg,
+            message: {
+              ...msg.message,
+              content:
+                fullContent ||
+                msg.message.content ||
+                "Error: No response body reader"
+            }
+          }
+        }
+        return msg
+      })
+    )
+    return (
+      fullContent ||
+      lastChatMessage.message.content ||
+      "Error: No response body reader"
+    )
+  }
+
+  setToolInUse("none")
+  let firstTokenProcessedInStream = false
+
+  while (true) {
+    if (controller.signal.aborted) {
+      break
+    }
+
+    try {
+      const { done, value } = await reader.read()
+      if (done) {
+        break
+      }
+
+      const decodedValue = decoder.decode(value, { stream: true })
+      fullContent += decodedValue
+
+      if (!firstTokenProcessedInStream) {
+        setFirstTokenReceived(true)
+        firstTokenProcessedInStream = true
+      }
+
+      setChatMessages(prevMessages =>
+        prevMessages.map(msg => {
+          if (msg.message.id === lastChatMessage.message.id) {
+            return {
+              ...msg,
+              message: {
+                ...msg.message,
+                content: fullContent
+              }
+            }
+          }
+          return msg
+        })
+      )
+    } catch (error) {
+      console.error("Error reading from stream:", error)
+      setChatMessages(prevMessages =>
+        prevMessages.map(msg => {
+          if (msg.message.id === lastChatMessage.message.id) {
+            return {
+              ...msg,
+              message: {
+                ...msg.message,
+                content: fullContent + "\nError reading stream."
+              }
+            }
+          }
+          return msg
+        })
+      )
+      break
+    }
+  }
+
+  setChatMessages(prevMessages =>
+    prevMessages.map(msg => {
+      if (msg.message.id === lastChatMessage.message.id) {
+        return {
+          ...msg,
+          message: {
+            ...msg.message,
+            content: fullContent.trim() || msg.message.content
+          }
+        }
+      }
+      return msg
+    })
+  )
+
+  return fullContent.trim()
 }
 
 export const handleCreateChat = async (
